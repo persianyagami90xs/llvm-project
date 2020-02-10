@@ -13,9 +13,8 @@
 
 #include "common/omptarget.h"
 #include "common/device_environment.h"
+#include "common/target_atomic.h"
 #include "target_impl.h"
-
-#include <time.h>
 
 EXTERN double omp_get_wtick(void) {
   double rc = __kmpc_impl_get_wtick();
@@ -325,55 +324,6 @@ EXTERN int omp_get_team_num() {
   return rc;
 }
 
-EXTERN int omp_ext_get_warp_id() {
-  int rc = GetWarpId();
-  PRINT(LD_IO, "call omp_ext_get_warp_id() returns %d\n", rc);
-  return rc;
-}
-
-EXTERN int omp_ext_get_lane_id() {
-  int rc = GetLaneId();
-  PRINT(LD_IO, "call omp_ext_get_lane_id() returns %d\n", rc);
-  return rc;
-}
-
-__device__ static unsigned getMasterThreadId() {
-  unsigned Mask = WARPSIZE - 1;
-  return (GetNumberOfThreadsInBlock() - 1) & (~Mask);
-}
-
-EXTERN int omp_ext_get_smid() {
-  int rc = __kmpc_impl_smid();
-  PRINT(LD_IO, "call omp_ext_get_smid() returns %d\n", rc);
-  return rc;
-}
-
-EXTERN int omp_ext_is_spmd_mode() {
-  int rc = isSPMDMode();
-  PRINT(LD_IO, "call omp_ext_is_spmd_mode() returns %d\n", rc);
-  return rc;
-}
-
-EXTERN int omp_ext_get_master_thread_id() {
-  int rc = getMasterThreadId();
-  PRINT(LD_IO, "call omp_ext_get_master_thread_id() returns %d\n", rc);
-  return rc;
-}
-
-#ifdef __AMDGCN__
-EXTERN unsigned long long omp_ext_get_active_threads_mask() {
-  unsigned long long rc = __kmpc_impl_activemask();
-  PRINT(LD_IO, "call omp_ext_get_active_threads_mask() returns %llx\n", rc);
-  return rc;
-}
-#else
-EXTERN unsigned long long omp_ext_get_active_threads_mask() {
-  unsigned rc = __kmpc_impl_activemask();
-  PRINT(LD_IO, "call omp_ext_get_active_threads_mask() returns %x\n", rc);
-  return (unsigned long long)rc;
-}
-#endif
-
 EXTERN int omp_is_initial_device(void) {
   PRINT0(LD_IO, "call omp_is_initial_device() returns 0\n");
   return 0; // 0 by def on device
@@ -395,66 +345,34 @@ EXTERN int omp_get_max_task_priority(void) {
 // locks
 ////////////////////////////////////////////////////////////////////////////////
 
-#define __OMP_SPIN 1000
-#define UNSET 0
-#define SET 1
-
 EXTERN void omp_init_lock(omp_lock_t *lock) {
-  omp_unset_lock(lock);
+  __kmpc_impl_init_lock(lock);
   PRINT0(LD_IO, "call omp_init_lock()\n");
 }
 
 EXTERN void omp_destroy_lock(omp_lock_t *lock) {
-  omp_unset_lock(lock);
+  __kmpc_impl_destroy_lock(lock);
   PRINT0(LD_IO, "call omp_destroy_lock()\n");
 }
 
 EXTERN void omp_set_lock(omp_lock_t *lock) {
-  // int atomicCAS(int* address, int compare, int val);
-  // (old == compare ? val : old)
-
-  // TODO: not sure spinning is a good idea here..
-  while (atomicCAS(lock, UNSET, SET) != UNSET) {
-#ifdef __AMDGCN__
-    clock_t start = __clock64();
-#else
-    clock_t start = clock();
-#endif
-    clock_t now;
-    for (;;) {
-#ifdef __AMDGCN__
-      now = __clock64();
-#else
-      now = clock();
-#endif
-      clock_t cycles = now > start ? now - start : now + (0xffffffff - start);
-      if (cycles >= __OMP_SPIN * GetBlockIdInKernel()) {
-        break;
-      }
-    }
-  } // wait for 0 to be the read value
-
+  __kmpc_impl_set_lock(lock);
   PRINT0(LD_IO, "call omp_set_lock()\n");
 }
 
 EXTERN void omp_unset_lock(omp_lock_t *lock) {
-  (void)atomicExch(lock, UNSET);
-
+  __kmpc_impl_unset_lock(lock);
   PRINT0(LD_IO, "call omp_unset_lock()\n");
 }
 
 EXTERN int omp_test_lock(omp_lock_t *lock) {
-  // int atomicCAS(int* address, int compare, int val);
-  // (old == compare ? val : old)
-  int ret = atomicAdd(lock, 0);
-
-  PRINT(LD_IO, "call omp_test_lock() return %d\n", ret);
-
-  return ret;
+  int rc = __kmpc_impl_test_lock(lock);
+  PRINT(LD_IO, "call omp_test_lock() return %d\n", rc);
+  return rc;
 }
 
-// for xlf Fotran
-// Fotran, the return is LOGICAL type
+// for xlf Fortran
+// Fortran, the return is LOGICAL type
 
 #define FLOGICAL long
 EXTERN FLOGICAL __xlf_omp_is_initial_device_i8() {

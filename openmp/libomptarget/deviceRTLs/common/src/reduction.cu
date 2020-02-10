@@ -1,5 +1,4 @@
-//===---- reduction.cu - NVPTX OpenMP reduction implementation ---- CUDA
-//-*-===//
+//===---- reduction.cu - GPU OpenMP reduction implementation ----- CUDA -*-===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -11,66 +10,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include <complex.h>
-#include <stdio.h>
-
 #include "common/omptarget.h"
+#include "common/target_atomic.h"
 #include "target_impl.h"
-
-// may eventually remove this
-EXTERN
-int32_t __gpu_block_reduce() {
-  bool isSPMDExecutionMode = isSPMDMode();
-  int nt = GetNumberOfOmpThreads(isSPMDExecutionMode);
-  if (nt != blockDim.x)
-    return 0;
-
-  __kmpc_impl_lanemask_t tnum = __kmpc_impl_activemask();
-#ifdef __AMDGCN__
-  if (tnum == __kmpc_impl_all_lanes) {
-    return 0;
-  }
-#else
-   if (tnum != (~0x0)) { // assume swapSize is 32
-     return 0;
-   }
-#endif
-
-  return 1;
-}
-
-EXTERN
-int32_t __kmpc_reduce_gpu(kmp_Ident *loc, int32_t global_tid, int32_t num_vars,
-                          size_t reduce_size, void *reduce_data,
-                          void *reduce_array_size, kmp_ReductFctPtr *reductFct,
-                          kmp_CriticalName *lck) {
-  int threadId = GetLogicalThreadIdInBlock(checkSPMDMode(loc));
-  omptarget_nvptx_TaskDescr *currTaskDescr = getMyTopTaskDescriptor(threadId);
-  int numthread;
-  if (currTaskDescr->IsParallelConstruct()) {
-    numthread = GetNumberOfOmpThreads(checkSPMDMode(loc));
-  } else {
-    numthread = GetNumberOfOmpTeams();
-  }
-
-  if (numthread == 1)
-    return 1;
-  if (!__gpu_block_reduce())
-    return 2;
-  if (threadIdx.x == 0)
-    return 1;
-  return 0;
-}
-
-EXTERN
-int32_t __kmpc_reduce_combined(kmp_Ident *loc) {
-  return threadIdx.x == 0 ? 2 : 0;
-}
-
-EXTERN
-int32_t __kmpc_reduce_simd(kmp_Ident *loc) {
-  return (threadIdx.x % WARPSIZE == 0) ? 1 : 0;
-}
 
 EXTERN
 void __kmpc_nvptx_end_reduce(int32_t global_tid) {}
@@ -302,7 +244,7 @@ static int32_t nvptx_teams_reduce_nowait(int32_t global_tid, int32_t num_vars,
     // atomicInc increments 'timestamp' and has a range [0, NumTeams-1].
     // It resets 'timestamp' back to 0 once the last team increments
     // this counter.
-    unsigned val = atomicInc(timestamp, NumTeams - 1);
+    unsigned val = __kmpc_atomic_inc(timestamp, NumTeams - 1);
     IsLastTeam = val == NumTeams - 1;
   }
 
@@ -438,7 +380,7 @@ EXTERN int32_t __kmpc_nvptx_teams_reduce_nowait_simple(kmp_Ident *loc,
   if (checkSPMDMode(loc) && GetThreadIdInBlock() != 0)
     return 0;
   // The master thread of the team actually does the reduction.
-  while (atomicCAS((uint32_t *)crit, 0, 1))
+  while (__kmpc_atomic_cas((uint32_t *)crit, 0u, 1u))
     ;
   return 1;
 }
@@ -447,7 +389,7 @@ EXTERN void
 __kmpc_nvptx_teams_end_reduce_nowait_simple(kmp_Ident *loc, int32_t global_tid,
                                             kmp_CriticalName *crit) {
   __kmpc_impl_threadfence_system();
-  (void)atomicExch((uint32_t *)crit, 0);
+  (void)__kmpc_atomic_exchange((uint32_t *)crit, 0u);
 }
 
 INLINE static bool isMaster(kmp_Ident *loc, uint32_t ThreadId) {
@@ -492,7 +434,7 @@ EXTERN int32_t __kmpc_nvptx_teams_reduce_nowait_v2(
   bool IsMaster = isMaster(loc, ThreadId);
   while (IsMaster) {
     // Atomic read
-    Bound = atomicAdd((uint32_t *)&IterCnt, 0);
+    Bound = __kmpc_atomic_add((uint32_t *)&IterCnt, 0u);
     if (TeamId < Bound + num_of_records)
       break;
   }
@@ -507,7 +449,7 @@ EXTERN int32_t __kmpc_nvptx_teams_reduce_nowait_v2(
     // Increment team counter.
     // This counter is incremented by all teams in the current
     // BUFFER_SIZE chunk.
-    ChunkTeamCount = atomicInc((uint32_t *)&Cnt, num_of_records - 1);
+    ChunkTeamCount = __kmpc_atomic_inc((uint32_t *)&Cnt, num_of_records - 1u);
     __kmpc_impl_threadfence_system();
   }
   // Synchronize
@@ -583,7 +525,7 @@ EXTERN int32_t __kmpc_nvptx_teams_reduce_nowait_v2(
   if (IsMaster && ChunkTeamCount == num_of_records - 1) {
     // Allow SIZE number of teams to proceed writing their
     // intermediate results to the global buffer.
-    atomicAdd((uint32_t *)&IterCnt, num_of_records);
+    __kmpc_atomic_add((uint32_t *)&IterCnt, uint32_t(num_of_records));
   }
 
   return 0;

@@ -12,6 +12,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "common/omptarget.h"
+#include "amdgcn_access_dimensions.h"
 #include <stdio.h>
 
 #ifdef __AMDGCN__
@@ -28,22 +29,22 @@
 #define nullptr 0
 #endif
 
-#define hipBlockDim_x blockDim.x
-#define hipBlockDim_y blockDim.y
-#define hipBlockDim_z blockDim.z
+#define hipBlockDim_x __amdgcn_block_dim_x()
+#define hipBlockDim_y __amdgcn_block_dim_y()
+#define hipBlockDim_z __amdgcn_block_dim_z()
 
-#define hipBlockIdx_x blockIdx.x
+#define hipBlockIdx_x __builtin_amdgcn_workgroup_id_x()
 
-#define hipGridDim_x gridDim.x
-#define hipGridDim_y gridDim.y
-#define hipGridDim_z gridDim.z
+#define hipGridDim_x __amdgcn_grid_dim_x()
+#define hipGridDim_y __amdgcn_grid_dim_y()
+#define hipGridDim_z __amdgcn_grid_dim_z()
 
-#define hipThreadIdx_x threadIdx.x
+#define hipThreadIdx_x __builtin_amdgcn_workitem_id_x()
 
-__device__ char gpuHeap[SIZE_OF_HEAP];
-__device__ uint32_t gpuFlags[NUM_PAGES];
+DEVICE char gpuHeap[SIZE_OF_HEAP];
+DEVICE uint32_t gpuFlags[NUM_PAGES];
 
-__device__ void *__malloc(size_t size) {
+DEVICE void *__malloc(size_t size) {
   char *heap = (char *)gpuHeap;
   if (size > SIZE_OF_HEAP) {
     return (void *)nullptr;
@@ -76,7 +77,7 @@ __device__ void *__malloc(size_t size) {
   return ptr;
 }
 
-__device__ void __free(void *ptr) {
+DEVICE void __free(void *ptr) {
   if (ptr == nullptr) {
     return;
   }
