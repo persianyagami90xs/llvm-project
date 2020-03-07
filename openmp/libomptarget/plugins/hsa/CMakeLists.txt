@@ -138,6 +138,8 @@ endif()
 include_directories(
   ${LIBOMPTARGET_DEP_LIBHSA_INCLUDE_DIRS}
   ${CLANG_INCLUDE_DIRS}
+  ${ROCM_DIR}/include
+  ${ROCM_DIR}/include/hsa
 )
 
 add_library(omptarget.rtl.hsa SHARED
