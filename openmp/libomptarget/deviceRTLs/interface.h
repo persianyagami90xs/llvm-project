@@ -354,6 +354,11 @@ EXTERN int32_t __kmpc_nvptx_teams_reduce_nowait_v2(
     kmp_InterWarpCopyFctPtr cpyFct, kmp_ListGlobalFctPtr lgcpyFct,
     kmp_ListGlobalFctPtr lgredFct, kmp_ListGlobalFctPtr glcpyFct,
     kmp_ListGlobalFctPtr glredFct);
+
+EXTERN int32_t __kmpc_nvptx_parallel_reduce_nowait_simple_spmd(
+    int32_t global_tid, int32_t num_vars, size_t reduce_size, void *reduce_data,
+    kmp_ShuffleReductFctPtr shflFct, kmp_InterWarpCopyFctPtr cpyFct);
+
 EXTERN int32_t __kmpc_shuffle_int32(int32_t val, int16_t delta, int16_t size);
 EXTERN int64_t __kmpc_shuffle_int64(int64_t val, int16_t delta, int16_t size);
 
@@ -421,8 +426,8 @@ EXTERN int32_t __kmpc_cancel(kmp_Ident *loc, int32_t global_tid,
 // non standard
 EXTERN void __kmpc_kernel_init(int ThreadLimit, int16_t RequiresOMPRuntime);
 EXTERN void __kmpc_kernel_deinit(int16_t IsOMPRuntimeInitialized);
-EXTERN void __kmpc_spmd_kernel_init(int ThreadLimit, int16_t RequiresOMPRuntime,
-                                    int16_t RequiresDataSharing);
+EXTERN void __kmpc_spmd_kernel_init(int ThreadLimit,
+                                    int16_t RequiresOMPRuntime);
 EXTERN void __kmpc_spmd_kernel_deinit_v2(int16_t RequiresOMPRuntime);
 EXTERN void __kmpc_kernel_prepare_parallel(void *WorkFn);
 EXTERN bool __kmpc_kernel_parallel(void **WorkFn);
