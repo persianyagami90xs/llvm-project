@@ -137,6 +137,9 @@ class Command {
   /// See Command::setEnvironment
   std::vector<const char *> Environment;
 
+  /// Dependent actions
+  llvm::SmallVector<const Action *, 4> DependentActions;
+
   /// When a response file is needed, we try to put most arguments in an
   /// exclusive file, while others remains as regular command line arguments.
   /// This functions fills a vector with the regular command line arguments,
@@ -200,6 +203,10 @@ public:
   const char *getExecutable() const { return Executable; }
 
   const llvm::opt::ArgStringList &getArguments() const { return Arguments; }
+
+  const llvm::SmallVector<const Action *, 4> &getDependentActions() const {
+    return DependentActions;
+  }
 
 protected:
   /// Optionally print the filenames to be compiled
