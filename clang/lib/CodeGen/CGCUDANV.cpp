@@ -181,6 +181,10 @@ CGNVCUDARuntime::CGNVCUDARuntime(CodeGenModule &CGM)
   CharPtrTy = llvm::PointerType::getUnqual(Types.ConvertType(Ctx.CharTy));
   VoidPtrTy = cast<llvm::PointerType>(Types.ConvertType(Ctx.VoidPtrTy));
   VoidPtrPtrTy = VoidPtrTy->getPointerTo();
+
+  DeviceMC->setDeviceMangleContext(
+      CGM.getContext().getTargetInfo().getCXXABI().isMicrosoft() &&
+      CGM.getContext().getAuxTargetInfo()->getCXXABI().isItaniumFamily());
 }
 
 llvm::FunctionCallee CGNVCUDARuntime::getSetupArgumentFn() const {
@@ -359,8 +363,7 @@ void CGNVCUDARuntime::emitDeviceStubBodyLegacy(CodeGenFunction &CGF,
         CGM.getContext().getTypeInfoInChars(A->getType());
     Offset = Offset.alignTo(TyAlign);
     llvm::Value *Args[] = {
-        CGF.Builder.CreatePointerCast(CGF.GetAddrOfLocalVar(A).getPointer(),
-                                      VoidPtrTy),
+        CGF.Builder.CreatePointerCast(CGF.GetAddrOfLocalVar(A).getPointer(), VoidPtrTy),
         llvm::ConstantInt::get(SizeTy, TyWidth.getQuantity()),
         llvm::ConstantInt::get(SizeTy, Offset.getQuantity()),
     };
