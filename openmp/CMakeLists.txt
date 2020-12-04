@@ -41,6 +41,13 @@ else()
   endif()
 endif()
 
+set(OPENMP_SOURCE_DEBUG_MAP "" CACHE STRING "Map of runtime sources to installed sources to help debugging runtimes")
+
+if((CMAKE_BUILD_TYPE MATCHES Debug) AND (${LIBOMPTARGET_NVPTX_DEBUG}))
+  set(OPENMP_LIBDIR_SUFFIX "-debug")
+  set(OPENMP_INSTALL_LIBDIR "lib${OPENMP_LIBDIR_SUFFIX}")
+endif()
+
 # Check and set up common compiler flags.
 include(config-ix)
 include(HandleOpenMPOptions)
@@ -57,6 +64,9 @@ set(OPENMP_TEST_OPENMP_FLAGS ${OPENMP_TEST_COMPILER_OPENMP_FLAGS} CACHE STRING
 # Build host runtime library.
 add_subdirectory(runtime)
 
+
+# Build OMPD
+add_subdirectory(libompd)
 
 set(ENABLE_LIBOMPTARGET ON)
 # Currently libomptarget cannot be compiled on Windows or MacOS X.
