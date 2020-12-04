@@ -742,8 +742,9 @@ CodeGenTypes::arrangeLLVMFunctionInfo(CanQualType resultType,
                                       FunctionType::ExtInfo info,
                      ArrayRef<FunctionProtoType::ExtParameterInfo> paramInfos,
                                       RequiredArgs required) {
-  assert(llvm::all_of(argTypes,
-                      [](CanQualType T) { return T.isCanonicalAsParam(); }));
+  if (!getContext().getLangOpts().OpenMP)
+    assert(llvm::all_of(argTypes,
+                        [](CanQualType T) { return T.isCanonicalAsParam(); }));
 
   // Lookup or create unique function info.
   llvm::FoldingSetNodeID ID;
@@ -4550,7 +4551,6 @@ RValue CodeGenFunction::EmitCall(const CGFunctionInfo &CallInfo,
         if (FirstIRArg < IRFuncTy->getNumParams() &&
             V->getType() != IRFuncTy->getParamType(FirstIRArg))
           V = Builder.CreateBitCast(V, IRFuncTy->getParamType(FirstIRArg));
-
         IRCallArgs[FirstIRArg] = V;
         break;
       }
