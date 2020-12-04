@@ -17,28 +17,49 @@
 // global device environment
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef __AMDGCN__
+// Keeping the variable out of bss allows it to be initialized before
+// loading the device image
+__attribute__((section(".data")))
+#endif
 DEVICE omptarget_device_environmentTy omptarget_device_environment;
 
 ////////////////////////////////////////////////////////////////////////////////
 // global data holding OpenMP state information
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifndef __AMDGCN__
+
 DEVICE
-    omptarget_nvptx_Queue<omptarget_nvptx_ThreadPrivateContext, OMP_STATE_COUNT>
-        omptarget_nvptx_device_State[MAX_SM];
+omptarget_nvptx_Queue<omptarget_nvptx_ThreadPrivateContext, OMP_STATE_COUNT>
+    omptarget_nvptx_device_State[MAX_SM];
+
+#else
+
+__attribute__((used))
+EXTERN uint64_t const constexpr omptarget_nvptx_device_State_size =
+    sizeof(omptarget_nvptx_Queue<omptarget_nvptx_ThreadPrivateContext,
+                                 OMP_STATE_COUNT>[MAX_SM]);
+
+// Initialized to point to omptarget_nvptx_device_State_size bytes by plugin
+__attribute__((section(".data")))
+DEVICE
+omptarget_nvptx_Queue<omptarget_nvptx_ThreadPrivateContext, OMP_STATE_COUNT>
+    *omptarget_nvptx_device_State;
+
+#endif
 
 DEVICE omptarget_nvptx_SimpleMemoryManager
     omptarget_nvptx_simpleMemoryManager;
 DEVICE SHARED uint32_t usedMemIdx;
 DEVICE SHARED uint32_t usedSlotIdx;
-
 DEVICE SHARED uint8_t parallelLevel[MAX_THREADS_PER_TEAM / WARPSIZE];
 DEVICE SHARED uint16_t threadLimit;
 DEVICE SHARED uint16_t threadsInTeam;
 DEVICE SHARED uint16_t nThreads;
 // Pointer to this team's OpenMP state object
-DEVICE SHARED
-    omptarget_nvptx_ThreadPrivateContext *omptarget_nvptx_threadPrivateContext;
+DEVICE SHARED omptarget_nvptx_ThreadPrivateContext
+    *omptarget_nvptx_threadPrivateContext;
 
 ////////////////////////////////////////////////////////////////////////////////
 // The team master sets the outlined parallel function in this variable to
