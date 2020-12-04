@@ -19,6 +19,7 @@
 #include "interface.h" // interfaces with omp, compiler, and user
 #include "common/state-queue.h"
 #include "common/support.h"
+#include "common/ompd-specific.h"
 
 #define OMPTARGET_NVPTX_VERSION 1.1
 
@@ -92,21 +93,21 @@ struct __kmpc_data_sharing_worker_slot_static {
   void *DataEnd;
   char Data[DS_Worker_Warp_Slot_Size];
 };
-// Additional master slot type which is initialized with the default master slot
-// size of 4 bytes.
-struct __kmpc_data_sharing_master_slot_static {
-  __kmpc_data_sharing_slot *Next;
-  __kmpc_data_sharing_slot *Prev;
-  void *PrevSlotStackPtr;
-  void *DataEnd;
-  char Data[DS_Slot_Size];
-};
+
 extern DEVICE SHARED DataSharingStateTy DataSharingState;
 
 ////////////////////////////////////////////////////////////////////////////////
 // task ICV and (implicit & explicit) task state
 
 class omptarget_nvptx_TaskDescr {
+#if OMPD_SUPPORT
+  friend void __device__ ompd_init( void );
+  friend INLINE void ompd_init_thread(
+      omptarget_nvptx_TaskDescr *currTaskDescr, void *task_func,
+      uint8_t implicit);
+  friend __device__ void  ompd_set_device_specific_thread_state(
+      omptarget_nvptx_TaskDescr *taskDescr, omp_state_t state);
+#endif /* OMPD_SUPPORT */
 public:
   // methods for flags
   INLINE omp_sched_t GetRuntimeSched() const;
@@ -121,6 +122,7 @@ public:
   INLINE int IsTaskConstruct() const { return !IsParallelConstruct(); }
   // methods for other fields
   INLINE uint16_t &ThreadId() { return items.threadId; }
+  INLINE uint8_t &ParLev() { return items.parLev; }
   INLINE uint64_t &RuntimeChunkSize() { return items.runtimeChunkSize; }
   INLINE omptarget_nvptx_TaskDescr *GetPrevTaskDescr() const { return prev; }
   INLINE void SetPrevTaskDescr(omptarget_nvptx_TaskDescr *taskDescr) {
@@ -137,6 +139,11 @@ public:
   INLINE void CopyFromWorkDescr(omptarget_nvptx_TaskDescr *workTaskDescr);
   INLINE void CopyConvergentParent(omptarget_nvptx_TaskDescr *parentTaskDescr,
                                    uint16_t tid, uint16_t tnum);
+#ifdef OMPD_SUPPORT
+  INLINE ompd_nvptx_thread_info_t *ompd_ThreadInfo() {
+    return &ompd_thread_info;
+  }
+#endif
   INLINE void SaveLoopData();
   INLINE void RestoreLoopData() const;
 
@@ -162,10 +169,13 @@ private:
 
   struct TaskDescr_items {
     uint8_t flags; // 6 bit used (see flag above)
-    uint8_t unused;
+    uint8_t parLev;
     uint16_t threadId;         // thread id
     uint64_t runtimeChunkSize; // runtime chunk size
   } items;
+#ifdef OMPD_SUPPORT
+  ompd_nvptx_thread_info_t ompd_thread_info;
+#endif
   omptarget_nvptx_TaskDescr *prev;
 };
 
@@ -192,6 +202,9 @@ private:
 ////////////////////////////////////////////////////////////////////////////////
 
 class omptarget_nvptx_TeamDescr {
+#ifdef OMPD_SUPPORT
+  friend void __device__ ompd_init( void );
+#endif /*OMPD_SUPPORT*/
 public:
   // access to data
   INLINE omptarget_nvptx_TaskDescr *LevelZeroTaskDescr() {
@@ -203,37 +216,6 @@ public:
 
   // init
   INLINE void InitTeamDescr();
-
-  INLINE __kmpc_data_sharing_slot *RootS(int wid, bool IsMasterThread) {
-    // If this is invoked by the master thread of the master warp then
-    // initialize it with a smaller slot.
-    if (IsMasterThread) {
-      // Do not initialize this slot again if it has already been initalized.
-      if (master_rootS[0].DataEnd == &master_rootS[0].Data[0] + DS_Slot_Size)
-        return 0;
-      // Initialize the pointer to the end of the slot given the size of the
-      // data section. DataEnd is non-inclusive.
-      master_rootS[0].DataEnd = &master_rootS[0].Data[0] + DS_Slot_Size;
-      // We currently do not have a next slot.
-      master_rootS[0].Next = 0;
-      master_rootS[0].Prev = 0;
-      master_rootS[0].PrevSlotStackPtr = 0;
-      return (__kmpc_data_sharing_slot *)&master_rootS[0];
-    }
-    // Do not initialize this slot again if it has already been initalized.
-    if (worker_rootS[wid].DataEnd ==
-        &worker_rootS[wid].Data[0] + DS_Worker_Warp_Slot_Size)
-      return 0;
-    // Initialize the pointer to the end of the slot given the size of the data
-    // section. DataEnd is non-inclusive.
-    worker_rootS[wid].DataEnd =
-        &worker_rootS[wid].Data[0] + DS_Worker_Warp_Slot_Size;
-    // We currently do not have a next slot.
-    worker_rootS[wid].Next = 0;
-    worker_rootS[wid].Prev = 0;
-    worker_rootS[wid].PrevSlotStackPtr = 0;
-    return (__kmpc_data_sharing_slot *)&worker_rootS[wid];
-  }
 
   INLINE __kmpc_data_sharing_slot *GetPreallocatedSlotAddr(int wid) {
     worker_rootS[wid].DataEnd =
@@ -252,8 +234,7 @@ private:
       workDescrForActiveParallel; // one, ONLY for the active par
 
   ALIGN(16)
-  __kmpc_data_sharing_worker_slot_static worker_rootS[WARPSIZE];
-  ALIGN(16) __kmpc_data_sharing_master_slot_static master_rootS[1];
+  __kmpc_data_sharing_worker_slot_static worker_rootS[DS_Max_Warp_Number];
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -261,6 +242,9 @@ private:
 // tid refers here to the global thread id
 // do not support multiple concurrent kernel a this time
 class omptarget_nvptx_ThreadPrivateContext {
+#if OMPD_SUPPORT
+  friend void __device__ ompd_init( void );
+#endif /* OMPD_SUPPORT */
 public:
   // task
   INLINE omptarget_nvptx_TaskDescr *Level1TaskDescr(int tid) {
@@ -307,6 +291,10 @@ private:
   int64_t nextLowerBound[MAX_THREADS_PER_TEAM];
   int64_t stride[MAX_THREADS_PER_TEAM];
   uint64_t cnt;
+#ifdef OMPD_SUPPORT
+  // The implicit parallel region around the master task in generic mode
+  ompd_nvptx_parallel_info_t ompd_levelZeroParallelInfo;
+#endif
 };
 
 /// Memory manager for statically allocated memory.
@@ -335,8 +323,13 @@ extern DEVICE omptarget_nvptx_SimpleMemoryManager
     omptarget_nvptx_simpleMemoryManager;
 extern DEVICE SHARED uint32_t usedMemIdx;
 extern DEVICE SHARED uint32_t usedSlotIdx;
+#ifdef __AMDGCN__
 extern DEVICE SHARED uint8_t
     parallelLevel[MAX_THREADS_PER_TEAM / WARPSIZE];
+#else
+extern DEVICE SHARED uint8_t
+    parallelLevel[MAX_THREADS_PER_TEAM / WARPSIZE];
+#endif
 extern DEVICE SHARED uint16_t threadLimit;
 extern DEVICE SHARED uint16_t threadsInTeam;
 extern DEVICE SHARED uint16_t nThreads;
