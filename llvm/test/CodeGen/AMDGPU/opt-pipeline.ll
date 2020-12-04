@@ -98,6 +98,7 @@
 ; GCN-O1-NEXT:       AMDGPU Function Integration/Inlining
 ; GCN-O1-NEXT:       Deduce function attributes
 ; GCN-O1-NEXT:       FunctionPass Manager
+; GCN-O1-NEXT:         Lower intrinsics
 ; GCN-O1-NEXT:         Infer address spaces
 ; GCN-O1-NEXT:     AMDGPU Kernel Attributes
 ; GCN-O1-NEXT:     FunctionPass Manager
@@ -404,6 +405,7 @@
 ; GCN-O2-NEXT:       OpenMP specific optimizations
 ; GCN-O2-NEXT:       Deduce function attributes
 ; GCN-O2-NEXT:       FunctionPass Manager
+; GCN-O2-NEXT:         Lower intrinsics
 ; GCN-O2-NEXT:         Infer address spaces
 ; GCN-O2-NEXT:     AMDGPU Kernel Attributes
 ; GCN-O2-NEXT:     FunctionPass Manager
@@ -761,6 +763,7 @@
 ; GCN-O3-NEXT:       Deduce function attributes
 ; GCN-O3-NEXT:       Promote 'by reference' arguments to scalars
 ; GCN-O3-NEXT:       FunctionPass Manager
+; GCN-O3-NEXT:         Lower intrinsics
 ; GCN-O3-NEXT:         Infer address spaces
 ; GCN-O3-NEXT:     AMDGPU Kernel Attributes
 ; GCN-O3-NEXT:     FunctionPass Manager
