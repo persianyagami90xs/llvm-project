@@ -263,5 +263,3 @@ for.end:                                        ; preds = %for.body
 !12 = !{i32 999000, i64 100, i32 1}
 !13 = !{i32 999999, i64 1, i32 2}
 !14 = !{!"function_entry_count", i64 0}
-!15 = distinct !{!15, !16}
-!16 = !{!"llvm.loop.vectorize.enable", i1 true}
