@@ -9,10 +9,34 @@
 #ifndef _AMDGCN_INTERFACE_H_
 #define _AMDGCN_INTERFACE_H_
 
+#include <stddef.h>
 #include <stdint.h>
 
 #define EXTERN extern "C" __attribute__((device))
 typedef uint64_t __kmpc_impl_lanemask_t;
 typedef uint32_t omp_lock_t; /* arbitrary type of the right length */
+
+////////////////////////////////////////////////////////////////////////////////
+// OpenMP interface
+////////////////////////////////////////////////////////////////////////////////
+
+EXTERN int omp_get_device_num(void);
+EXTERN int omp_ext_get_warp_id(void);
+EXTERN int omp_ext_get_lane_id(void);
+EXTERN int omp_ext_get_master_thread_id(void);
+EXTERN int omp_ext_get_smid(void);
+EXTERN int omp_ext_is_spmd_mode(void);
+EXTERN unsigned long long omp_ext_get_active_threads_mask(void);
+
+////////////////////////////////////////////////////////////////////////////////
+// kmp specifc types
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+// external interface
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct ident ident_t;
+typedef ident_t kmp_Ident;
 
 #endif
