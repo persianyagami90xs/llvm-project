@@ -53,6 +53,7 @@ static int DebugLevel = 0;
 
 #include "../../common/elf_common.c"
 
+
 /// Keep entries table per device.
 struct FuncOrGblEntryTy {
   __tgt_target_table Table;
@@ -128,6 +129,20 @@ struct DeviceDataTy {
   int NumTeams = 0;
   int NumThreads = 0;
 };
+
+#if OMPD_SUPPORT
+#ifdef __cplusplus
+extern "C" {
+#endif
+  /* TODO - Put these OMPD globals someplace cleaner */
+  uint64_t ompd_num_cuda_devices;
+  DeviceDataTy* ompd_CudaDeviceDataArray;
+  uint64_t ompd_access__DeviceDataTy__Context;
+  uint64_t ompd_sizeof__DeviceDataTy__Context;
+#ifdef __cplusplus
+}
+#endif /* __cplusplus */
+#endif /* OMPD_SUPPORT */
 
 class StreamManagerTy {
   int NumberOfDevices;
@@ -356,6 +371,12 @@ public:
       return;
     }
 
+#if OMPD_SUPPORT
+    ompd_access__DeviceDataTy__Context = (uint64_t)&(((DeviceDataTy*)0)->Context);
+    ompd_sizeof__DeviceDataTy__Context = sizeof(((DeviceDataTy*)0)->Context);
+    ompd_num_cuda_devices = NumberOfDevices;
+    ompd_CudaDeviceDataArray = &DeviceData[0];
+#endif /* OMPD_SUPPORT */
     DeviceData.resize(NumberOfDevices);
 
     // Get environment variables regarding teams
