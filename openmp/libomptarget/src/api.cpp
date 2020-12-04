@@ -17,8 +17,8 @@
 #include "rtl.h"
 
 #include <climits>
-#include <cstring>
 #include <cstdlib>
+#include <cstring>
 
 EXTERN int omp_get_num_devices(void) {
   RTLsMtx->lock();
@@ -32,6 +32,11 @@ EXTERN int omp_get_num_devices(void) {
 
 EXTERN int omp_get_initial_device(void) {
   DP("Call to omp_get_initial_device returning %d\n", HOST_DEVICE);
+  return HOST_DEVICE;
+}
+
+EXTERN int omp_get_device_num(void) {
+  DP("Call to omp_get_device_num returning %d\n", HOST_DEVICE);
   return HOST_DEVICE;
 }
 
