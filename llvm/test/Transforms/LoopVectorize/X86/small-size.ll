@@ -81,7 +81,10 @@ define void @example2(i32 %n, i32 %x) optsize {
 ; CHECK-NEXT:    br i1 false, label [[SCALAR_PH:%.*]], label [[VECTOR_PH:%.*]]
 ; CHECK:       vector.ph:
 ; CHECK-NEXT:    [[N_RND_UP:%.*]] = add nuw nsw i64 [[TMP3]], 4
-; CHECK-NEXT:    [[N_VEC:%.*]] = and i64 [[N_RND_UP]], 8589934588
+; CHECK-NEXT:    [[TMP77:%.*]] = add i32 [[N]], 3
+; CHECK-NEXT:    [[TMP78:%.*]] = and i32 [[TMP77]], 3
+; CHECK-NEXT:    [[N_MOD_VF:%.*]] = zext i32 [[TMP78]] to i64
+; CHECK-NEXT:    [[N_VEC:%.*]] = sub nuw nsw i64 [[N_RND_UP]], [[N_MOD_VF]]
 ; CHECK-NEXT:    [[BROADCAST_SPLATINSERT:%.*]] = insertelement <4 x i64> undef, i64 [[TMP3]], i32 0
 ; CHECK-NEXT:    [[BROADCAST_SPLAT:%.*]] = shufflevector <4 x i64> [[BROADCAST_SPLATINSERT]], <4 x i64> undef, <4 x i32> zeroinitializer
 ; CHECK-NEXT:    br label [[VECTOR_BODY:%.*]]
@@ -141,7 +144,10 @@ define void @example2(i32 %n, i32 %x) optsize {
 ; CHECK-NEXT:    br i1 false, label [[SCALAR_PH8:%.*]], label [[VECTOR_PH10:%.*]]
 ; CHECK:       vector.ph10:
 ; CHECK-NEXT:    [[N_RND_UP11:%.*]] = add nuw nsw i64 [[TMP19]], 4
-; CHECK-NEXT:    [[N_VEC13:%.*]] = and i64 [[N_RND_UP11]], 8589934588
+; CHECK-NEXT:    [[TMP78:%.*]] = add i32 [[N]], 3
+; CHECK-NEXT:    [[TMP79:%.*]] = and i32 [[TMP78]], 3
+; CHECK-NEXT:    [[N_MOD_VF:%.*]] = zext i32 [[TMP79]] to i64
+; CHECK-NEXT:    [[N_VEC13:%.*]] = sub nuw nsw i64 [[N_RND_UP11]], [[N_MOD_VF]]
 ; CHECK-NEXT:    [[BROADCAST_SPLATINSERT20:%.*]] = insertelement <4 x i64> undef, i64 [[TMP19]], i32 0
 ; CHECK-NEXT:    [[BROADCAST_SPLAT21:%.*]] = shufflevector <4 x i64> [[BROADCAST_SPLATINSERT20]], <4 x i64> undef, <4 x i32> zeroinitializer
 ; CHECK-NEXT:    br label [[VECTOR_BODY9:%.*]]
@@ -328,7 +334,10 @@ define void @example3(i32 %n, i32* noalias nocapture %p, i32* noalias nocapture 
 ; CHECK-NEXT:    br i1 false, label [[SCALAR_PH:%.*]], label [[VECTOR_PH:%.*]]
 ; CHECK:       vector.ph:
 ; CHECK-NEXT:    [[N_RND_UP:%.*]] = add nuw nsw i64 [[TMP3]], 4
-; CHECK-NEXT:    [[N_VEC:%.*]] = and i64 [[N_RND_UP]], 8589934588
+; CHECK-NEXT:    [[TMP77:%.*]] = add i32 [[N]], 3
+; CHECK-NEXT:    [[TMP78:%.*]] = and i32 [[TMP77]], 3
+; CHECK-NEXT:    [[N_MOD_VF:%.*]] = zext i32 [[TMP78]] to i64
+; CHECK-NEXT:    [[N_VEC:%.*]] = sub nuw nsw i64 [[N_RND_UP]], [[N_MOD_VF]]
 ; CHECK-NEXT:    [[BROADCAST_SPLATINSERT:%.*]] = insertelement <4 x i64> undef, i64 [[TMP3]], i32 0
 ; CHECK-NEXT:    [[BROADCAST_SPLAT:%.*]] = shufflevector <4 x i64> [[BROADCAST_SPLATINSERT]], <4 x i64> undef, <4 x i32> zeroinitializer
 ; CHECK-NEXT:    br label [[VECTOR_BODY:%.*]]
