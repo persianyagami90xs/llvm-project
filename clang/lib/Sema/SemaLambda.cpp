@@ -476,6 +476,10 @@ void Sema::handleLambdaNumbering(
     unsigned ManglingNumber = MCtx->getManglingNumber(Method);
     Class->setLambdaMangling(ManglingNumber, ManglingContextDecl,
                              HasKnownInternalLinkage);
+    if (MCtx->hasDeviceMangleNumberingContext()) {
+      Class->setDeviceLambdaManglingNumber(
+          MCtx->getDeviceManglingNumber(Method));
+    }
   }
 }
 
