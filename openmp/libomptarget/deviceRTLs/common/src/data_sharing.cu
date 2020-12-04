@@ -12,6 +12,13 @@
 #include "common/omptarget.h"
 #include "target_impl.h"
 
+// Set the print format for active threads
+#ifdef __AMDGCN__
+#define _PFT_ % 08x
+#else
+#define _PFT_ % 16lx
+#endif
+
 // Return true if this is the master thread.
 INLINE static bool IsMasterThread(bool isSPMDExecutionMode) {
   return !isSPMDExecutionMode && GetMasterThreadID() == GetThreadIdInBlock();
@@ -26,7 +33,7 @@ INLINE static void data_sharing_init_stack_common() {
   omptarget_nvptx_TeamDescr *teamDescr =
       &omptarget_nvptx_threadPrivateContext->TeamContext();
 
-  for (int WID = 0; WID < WARPSIZE; WID++) {
+  for (int WID = 0; WID < DS_Max_Warp_Number; WID++) {
     __kmpc_data_sharing_slot *RootS = teamDescr->GetPreallocatedSlotAddr(WID);
     DataSharingState.SlotPtr[WID] = RootS;
     DataSharingState.StackPtr[WID] = (void *)&RootS->Data[0];
