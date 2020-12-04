@@ -48,6 +48,7 @@ set(files
   __clang_cuda_runtime_wrapper.h
   __clang_hip_libdevice_declares.h
   __clang_hip_math.h
+  __clang_hip_cmath.h
   __clang_hip_runtime_wrapper.h
   cetintrin.h
   cet.h
@@ -84,7 +85,7 @@ set(files
   mwaitxintrin.h
   nmmintrin.h
   opencl-c.h
-  opencl-c-base.h
+  offload_macros.h
   pkuintrin.h
   pmmintrin.h
   pconfigintrin.h
@@ -154,6 +155,7 @@ set(openmp_wrapper_files
   openmp_wrappers/complex.h
   openmp_wrappers/complex
   openmp_wrappers/__clang_openmp_device_functions.h
+  openmp_wrappers/complex_cmath.h
   openmp_wrappers/new
 )
 
