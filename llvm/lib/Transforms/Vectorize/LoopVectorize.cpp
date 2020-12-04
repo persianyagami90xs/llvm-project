@@ -7622,7 +7622,7 @@ static ScalarEpilogueLowering getScalarEpilogueLowering(
                                                      PGSOQueryType::IRPass);
   // 1) OptSize takes precedence over all other options, i.e. if this is set,
   // don't look at hints or options, and don't request a scalar epilogue.
-  if (OptSize)
+  if (OptSize && Hints.getForce() != LoopVectorizeHints::FK_Enabled)
     return CM_ScalarEpilogueNotAllowedOptSize;
 
   bool PredicateOptDisabled = PreferPredicateOverEpilog.getNumOccurrences() &&
