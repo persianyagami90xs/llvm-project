@@ -8924,23 +8924,36 @@ void AMDGPUTargetCodeGenInfo::setTargetAttributes(
     GV->setDSOLocal(true);
   }
 
-  if (GV->isDeclaration())
-    return;
+  // Move the GV->isDeclaration() check till after properly setting
+  // device function attributes.
+
   const FunctionDecl *FD = dyn_cast_or_null<FunctionDecl>(D);
   if (!FD)
     return;
 
   llvm::Function *F = cast<llvm::Function>(GV);
 
+  if (M.getLangOpts().OpenMP) {
+    F->removeFnAttr(llvm::Attribute::OptimizeNone);
+    F->removeFnAttr(llvm::Attribute::NoInline);
+    F->addFnAttr(llvm::Attribute::AlwaysInline);
+    F->addFnAttr(llvm::Attribute::NoUnwind);
+    F->addFnAttr(llvm::Attribute::NoRecurse);
+  }
+  if (GV->isDeclaration())
+    return;
+  // The rest of setTargetAttributes is for Function definitions
+
   const auto *ReqdWGS = M.getLangOpts().OpenCL ?
     FD->getAttr<ReqdWorkGroupSizeAttr>() : nullptr;
-
 
   const bool IsOpenCLKernel = M.getLangOpts().OpenCL &&
                               FD->hasAttr<OpenCLKernelAttr>();
   const bool IsHIPKernel = M.getLangOpts().HIP &&
                            FD->hasAttr<CUDAGlobalAttr>();
-  if ((IsOpenCLKernel || IsHIPKernel) &&
+  const bool IsOmpRegion =
+      M.getLangOpts().OpenMP && FD->hasAttr<CUDAGlobalAttr>();
+  if ((IsOpenCLKernel || IsHIPKernel || IsOmpRegion) &&
       (M.getTriple().getOS() == llvm::Triple::AMDHSA))
     F->addFnAttr("amdgpu-implicitarg-num-bytes", "56");
 
@@ -8972,13 +8985,9 @@ void AMDGPUTargetCodeGenInfo::setTargetAttributes(
       assert(Max == 0 && "Max must be zero");
   } else if (IsOpenCLKernel || IsHIPKernel) {
     // By default, restrict the maximum size to a value specified by
-    // --gpu-max-threads-per-block=n or its default value for HIP.
-    const unsigned OpenCLDefaultMaxWorkGroupSize = 256;
-    const unsigned DefaultMaxWorkGroupSize =
-        IsOpenCLKernel ? OpenCLDefaultMaxWorkGroupSize
-                       : M.getLangOpts().GPUMaxThreadsPerBlock;
+    // --gpu-max-threads-per-block=n or its default value.
     std::string AttrVal =
-        std::string("1,") + llvm::utostr(DefaultMaxWorkGroupSize);
+        std::string("1,") + llvm::utostr(M.getLangOpts().GPUMaxThreadsPerBlock);
     F->addFnAttr("amdgpu-flat-work-group-size", AttrVal);
   }
 
